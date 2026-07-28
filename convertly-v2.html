@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Convertly — Private Video Converter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg-0:#0a0c11;
+    --bg-1:#12151d;
+    --bg-2:#1a1e29;
+    --glass:rgba(255,255,255,.035);
+    --glass-border:rgba(255,255,255,.07);
+    --line:#242838;
+    --line-soft:#1c202c;
+    --ink-0:#f5f6fa;
+    --ink-1:#a9aebd;
+    --ink-2:#666c7d;
+    --mint:#7ce8d4;
+    --mint-deep:#3fb89f;
+    --mint-glow:rgba(124,232,212,.35);
+    --coral:#ffab8f;
+    --danger:#ff7b7b;
+    --danger-bg:#241417;
+    --success:#7ce8ac;
+    --success-bg:#0f2119;
+    --r-xl:26px;
+    --r-lg:20px;
+    --r-md:16px;
+    --r-sm:12px;
+    --ease:cubic-bezier(.22,1,.36,1);
+    --ease-spring:cubic-bezier(.34,1.56,.64,1);
+    --safe-b:env(safe-area-inset-bottom, 0px);
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    background:
+      radial-gradient(circle at 18% -8%, rgba(124,232,212,.11), transparent 45%),
+      radial-gradient(circle at 88% 4%, rgba(255,171,143,.06), transparent 42%),
+      var(--bg-0);
+    color:var(--ink-0);
+    font-family:'Hind Siliguri','Inter', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  ::selection{ background:var(--mint); color:#0a0c11; }
+  :focus-visible{ outline:2px solid var(--mint); outline-offset:3px; border-radius:8px; }
+  .disp{ font-family:'Space Grotesk', sans-serif; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  button, input{ font-family:inherit; -webkit-user-select:none; user-select:none; }
+  input{ -webkit-user-select:text; user-select:text; }
+
+  /* ============ ACCESS GATE ============ */
+  #gate{
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(124,232,212,.09), transparent 55%),
+      var(--bg-0);
+    padding:28px;
+    transition:opacity .7s var(--ease), visibility .7s;
+  }
+  #gate.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .gate-card{
+    width:100%; max-width:380px;
+    text-align:center;
+    animation:floatUp .8s var(--ease) both;
+  }
+  @keyframes floatUp{
+    from{ opacity:0; transform:translateY(16px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .gate-mark{
+    width:60px; height:60px; margin:0 auto 28px;
+    border-radius:20px;
+    background:linear-gradient(150deg, var(--mint), var(--mint-deep));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 16px 40px -14px var(--mint-glow), inset 0 1px 0 rgba(255,255,255,.3);
+  }
+  .gate-mark svg{ stroke:#06110f; }
+  .gate-card h1{
+    font-size:23px; font-weight:600; margin:0 0 10px; letter-spacing:-.01em;
+  }
+  .gate-card p.lead{
+    font-size:14.5px; color:var(--ink-1); line-height:1.75;
+    margin:0 0 30px;
+  }
+  .gate-form{ display:flex; flex-direction:column; gap:14px; }
+  .pass-row{
+    display:flex; align-items:center; gap:12px;
+    background:var(--glass);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--glass-border);
+    border-radius:var(--r-lg);
+    padding:16px 18px;
+    transition:border-color .3s var(--ease), box-shadow .3s var(--ease), background .3s var(--ease);
+  }
+  .pass-row:focus-within{
+    border-color:rgba(124,232,212,.45);
+    box-shadow:0 0 0 4px rgba(124,232,212,.09);
+    background:rgba(124,232,212,.03);
+  }
+  .pass-row svg{ opacity:.5; flex-shrink:0; stroke:var(--ink-1); }
+  #passInput{
+    flex:1; min-width:0; background:none; border:none; outline:none;
+    color:var(--ink-0); font-family:'JetBrains Mono', monospace; font-size:16px; letter-spacing:.05em;
+  }
+  #passInput::placeholder{ color:var(--ink-2); letter-spacing:0; font-family:'Hind Siliguri', sans-serif; }
+  .gate-btn{
+    background:linear-gradient(150deg, var(--mint), var(--mint-deep));
+    color:#06120f; border:none;
+    border-radius:var(--r-lg); padding:16px; font-weight:600; font-size:15px;
+    cursor:pointer; transition:transform .25s var(--ease-spring), box-shadow .3s var(--ease);
+    box-shadow:0 14px 34px -14px var(--mint-glow);
+  }
+  .gate-btn:active{ transform:scale(.97); }
+  .gate-error{
+    font-size:12.5px; color:var(--danger); min-height:16px;
+    opacity:0; transition:opacity .3s;
+  }
+  .gate-error.show{ opacity:1; }
+  .gate-card.shake{ animation:shake .45s; }
+  @keyframes shake{
+    15%,55%{ transform:translateX(-7px); } 35%,75%{ transform:translateX(7px); } 100%{ transform:translateX(0); }
+  }
+  .gate-note{
+    margin-top:28px; font-size:11.5px; color:var(--ink-2); line-height:1.7;
+  }
+
+  /* ============ APP SHELL ============ */
+  .shell{
+    max-width:720px; margin:0 auto;
+    padding:38px 20px calc(120px + var(--safe-b));
+    opacity:0; transform:translateY(10px);
+    transition:opacity .8s var(--ease), transform .8s var(--ease);
+  }
+  .shell.ready{ opacity:1; transform:translateY(0); }
+
+  header.top{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:36px; gap:10px;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; font-weight:700; font-size:18.5px; }
+  .brand-mark{
+    width:32px; height:32px; border-radius:11px;
+    background:linear-gradient(150deg, var(--mint), var(--mint-deep));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 20px -8px var(--mint-glow);
+  }
+  .status-pill{
+    display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--ink-1);
+    font-family:'JetBrains Mono', monospace; padding:8px 13px;
+    border:1px solid var(--glass-border); border-radius:100px; background:var(--glass);
+    backdrop-filter:blur(12px);
+  }
+  .status-dot{ width:6px; height:6px; border-radius:50%; background:var(--success); box-shadow:0 0 0 4px rgba(124,232,172,.15); animation:pulse 2.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
+
+  .hero p.lead{ font-size:15.5px; color:var(--ink-1); line-height:1.8; margin:0 0 26px; }
+  .hero p.lead b{ color:var(--ink-0); font-weight:600; }
+
+  .privacy-strip{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:28px; }
+  .privacy-chip{
+    display:flex; align-items:center; gap:7px;
+    font-size:11.5px; color:var(--ink-1);
+    border:1px solid var(--glass-border); border-radius:100px; padding:8px 13px;
+    background:var(--glass); backdrop-filter:blur(12px);
+  }
+  .privacy-chip svg{ stroke:var(--mint); flex-shrink:0; }
+
+  /* dropzone */
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:var(--r-xl);
+    padding:46px 24px;
+    text-align:center;
+    cursor:pointer;
+    background:var(--glass);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    transition:border-color .35s var(--ease), background .35s var(--ease), transform .25s var(--ease-spring);
+    position:relative;
+  }
+  .dropzone:active{ transform:scale(.985); }
+  .dropzone.drag{ border-color:var(--mint); background:rgba(124,232,212,.05); }
+  .up-icon-wrap{
+    width:56px; height:56px; margin:0 auto 16px;
+    border-radius:18px;
+    background:var(--bg-2);
+    display:flex; align-items:center; justify-content:center;
+    transition:background .35s var(--ease);
+  }
+  .dropzone.drag .up-icon-wrap{ background:rgba(124,232,212,.12); }
+  .dropzone svg.up-icon{ stroke:var(--ink-1); transition:stroke .3s; }
+  .dropzone.drag svg.up-icon{ stroke:var(--mint); }
+  .dz-title{ font-weight:600; font-size:15.5px; margin-bottom:6px; }
+  .dz-sub{ font-size:13px; color:var(--ink-2); }
+  .dz-sub .accent{ color:var(--mint); }
+  #fileInput{ display:none; }
+
+  /* file card */
+  .file-card{
+    display:none; align-items:center; gap:14px;
+    background:var(--glass); backdrop-filter:blur(16px);
+    border:1px solid var(--glass-border);
+    border-radius:var(--r-lg); padding:16px;
+    animation:floatUp .5s var(--ease) both;
+  }
+  .file-card.show{ display:flex; }
+  .file-thumb{
+    width:60px; height:60px; border-radius:14px; flex-shrink:0;
+    background:var(--bg-2); overflow:hidden;
+    display:flex; align-items:center; justify-content:center; color:var(--ink-2);
+  }
+  .file-thumb video{ width:100%; height:100%; object-fit:cover; }
+  .file-meta{ min-width:0; flex:1; }
+  .file-name{ font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .file-sub{ font-size:12px; color:var(--ink-2); margin-top:4px; font-family:'JetBrains Mono', monospace; }
+  .file-remove{
+    background:var(--bg-2); border:none; cursor:pointer; color:var(--ink-2); flex-shrink:0;
+    width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    transition:background .25s, color .25s, transform .2s var(--ease-spring);
+  }
+  .file-remove:active{ transform:scale(.9); }
+  .file-remove:hover{ color:var(--danger); }
+
+  /* section label */
+  .section-label{
+    font-size:11.5px; font-family:'JetBrains Mono', monospace; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--ink-2); margin:30px 0 13px;
+  }
+
+  /* format grid */
+  .format-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:9px; }
+  .format-grid input{ position:absolute; opacity:0; pointer-events:none; }
+  .format-opt{
+    display:flex; flex-direction:column; align-items:center; gap:7px;
+    padding:16px 6px;
+    border:1px solid var(--glass-border); border-radius:var(--r-md);
+    background:var(--glass); backdrop-filter:blur(12px);
+    cursor:pointer;
+    transition:border-color .3s var(--ease), background .3s var(--ease), transform .2s var(--ease-spring);
+  }
+  .format-opt:active{ transform:scale(.94); }
+  .format-opt svg{ stroke:var(--ink-1); transition:stroke .3s; }
+  .format-opt .fmt-name{ font-size:12.5px; font-weight:600; color:var(--ink-1); transition:color .3s; }
+  .format-opt .fmt-tag{ font-size:9px; color:var(--ink-2); font-family:'JetBrains Mono', monospace; }
+  input:checked + .format-opt{
+    border-color:rgba(124,232,212,.5); background:rgba(124,232,212,.08);
+    box-shadow:0 8px 20px -12px var(--mint-glow);
+  }
+  input:checked + .format-opt svg{ stroke:var(--mint); }
+  input:checked + .format-opt .fmt-name{ color:var(--ink-0); }
+  input:focus-visible + .format-opt{ outline:2px solid var(--mint); outline-offset:2px; }
+
+  /* quality toggle */
+  .quality-row{ display:flex; align-items:center; justify-content:space-between; margin-top:28px; flex-wrap:wrap; gap:12px; }
+  .seg{ display:inline-flex; background:var(--glass); backdrop-filter:blur(12px); border:1px solid var(--glass-border); border-radius:100px; padding:4px; gap:2px; position:relative; }
+  .seg input{ position:absolute; opacity:0; pointer-events:none; }
+  .seg label{
+    position:relative; padding:9px 17px; font-size:13px; font-weight:500; color:var(--ink-1);
+    border-radius:100px; cursor:pointer; z-index:1; transition:color .35s; user-select:none;
+  }
+  .seg input:checked + label{ color:#06120f; }
+  .seg-thumb{
+    position:absolute; top:4px; bottom:4px; left:4px; width:calc(50% - 4px);
+    background:linear-gradient(120deg, var(--mint), #a4f0e2); border-radius:100px;
+    transition:transform .45s var(--ease-spring);
+  }
+  .seg[data-active="hd"] .seg-thumb{ transform:translateX(100%); }
+
+  /* progress */
+  .progress-block{ display:none; margin-top:20px; }
+  .progress-block.show{ display:block; animation:floatUp .4s var(--ease) both; }
+  .progress-top{ display:flex; justify-content:space-between; font-size:12px; color:var(--ink-2); margin-bottom:9px; font-family:'JetBrains Mono', monospace; }
+  .progress-track{ height:7px; background:var(--line-soft); border-radius:10px; overflow:hidden; }
+  .progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--mint-deep), var(--mint)); border-radius:10px; transition:width .4s var(--ease); box-shadow:0 0 12px var(--mint-glow); }
+  .progress-log{ margin-top:10px; font-size:11px; color:var(--ink-2); font-family:'JetBrains Mono', monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* banners */
+  .banner{
+    display:none; align-items:flex-start; gap:12px; margin-top:18px; padding:15px 17px;
+    border-radius:var(--r-md); font-size:13.5px; line-height:1.6;
+    animation:floatUp .4s var(--ease) both;
+  }
+  .banner.show{ display:flex; }
+  .banner svg{ flex-shrink:0; margin-top:1px; }
+  .banner.error{ background:var(--danger-bg); color:#ffb9b9; border:1px solid rgba(255,123,123,.22); }
+  .banner.success{ background:var(--success-bg); color:#b0f2cd; border:1px solid rgba(124,232,172,.22); }
+
+  /* result */
+  .result{
+    display:none; margin-top:22px; border:1px solid var(--glass-border); border-radius:var(--r-xl);
+    background:var(--glass); backdrop-filter:blur(16px); overflow:hidden;
+    animation:floatUp .5s var(--ease) both;
+  }
+  .result.show{ display:block; }
+  .result-media{ width:100%; max-height:320px; background:#000; display:block; }
+  .result-bottom{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:17px 19px; flex-wrap:wrap; }
+  .file-info{ font-size:12px; color:var(--ink-2); font-family:'JetBrains Mono', monospace; }
+  .result-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .dl-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:linear-gradient(150deg, var(--mint), var(--mint-deep));
+    color:#06120f; text-decoration:none;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:14px; padding:12px 20px;
+    border-radius:100px; transition:transform .25s var(--ease-spring), box-shadow .3s var(--ease);
+    box-shadow:0 12px 28px -12px var(--mint-glow);
+  }
+  .dl-btn:active{ transform:scale(.96); }
+  .again-btn{
+    display:inline-flex; align-items:center; gap:8px; background:transparent; color:var(--ink-1);
+    border:1px solid var(--glass-border); font-size:13.5px; padding:11px 17px; border-radius:100px; cursor:pointer;
+    transition:border-color .25s, color .25s, transform .2s var(--ease-spring);
+  }
+  .again-btn:active{ transform:scale(.96); }
+
+  footer.foot{ margin-top:48px; text-align:center; color:var(--ink-2); font-size:11.5px; line-height:1.8; }
+
+  /* sticky convert bar */
+  .action-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    padding:14px 20px calc(16px + var(--safe-b));
+    background:linear-gradient(180deg, transparent, var(--bg-0) 30%);
+    display:flex; justify-content:center;
+    pointer-events:none;
+  }
+  .action-bar-inner{ width:100%; max-width:680px; pointer-events:auto; }
+  .go-btn{
+    width:100%;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    background:linear-gradient(150deg, var(--mint), var(--mint-deep));
+    color:#06120f; border:none;
+    border-radius:100px; padding:17px 20px;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:15.5px;
+    cursor:pointer;
+    box-shadow:0 16px 40px -16px var(--mint-glow), inset 0 1px 0 rgba(255,255,255,.3);
+    transition:transform .25s var(--ease-spring), box-shadow .3s var(--ease), opacity .3s;
+  }
+  .go-btn:active:not(:disabled){ transform:scale(.97); }
+  .go-btn:disabled{ opacity:.35; box-shadow:none; cursor:not-allowed; }
+  .go-btn .spinner{
+    width:16px; height:16px; border-radius:50%;
+    border:2px solid rgba(6,18,15,.25); border-top-color:#06120f;
+    animation:spin .7s linear infinite; display:none;
+  }
+  .go-btn.loading .spinner{ display:block; }
+  .go-btn.loading .btn-txt{ display:none; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  @media (max-width:560px){
+    .shell{ padding:30px 16px calc(112px + var(--safe-b)); }
+    .format-grid{ grid-template-columns:repeat(2, 1fr); }
+    .result-bottom{ flex-direction:column; align-items:stretch; }
+    .result-actions{ flex-direction:column; }
+    .dl-btn, .again-btn{ justify-content:center; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ ACCESS GATE ============ -->
+<div id="gate">
+  <div class="gate-card" id="gateCard">
+    <div class="gate-mark">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </div>
+    <h1 class="disp">শুধু আমাদের দুজনের জন্য</h1>
+    <p class="lead">প্রবেশ করতে passcode দাও। সব কিছু তোমার ফোনের browser-এই থাকবে — কোনো ফাইল কোথাও আপলোড হয় না।</p>
+    <form class="gate-form" id="gateForm">
+      <div class="pass-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <input type="password" id="passInput" placeholder="Passcode" autocomplete="off" inputmode="text">
+      </div>
+      <span class="gate-error" id="gateError">ভুল passcode — আবার চেষ্টা করো।</span>
+      <button type="submit" class="gate-btn">প্রবেশ করো</button>
+    </form>
+    <p class="gate-note">এটা শুধু casual privacy-র জন্য — browser-side lock। Real backend authentication না, তাই খুব sensitive কিছু এর পেছনে রেখো না।</p>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div class="shell" id="shell">
+
+  <header class="top">
+    <div class="brand disp">
+      <div class="brand-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06120f" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </div>
+      Convertly
+    </div>
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      <span>Fully local</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <p class="lead">ভিডিও ফাইল বেছে নাও, format বেছে নাও, convert করো — <b>সব কিছু তোমার ফোনেই</b> হয়, WebAssembly দিয়ে। কোনো ফাইল upload হয় না।</p>
+
+    <div class="privacy-strip">
+      <span class="privacy-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>ফাইল কোথাও যায় না</span>
+      <span class="privacy-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>100% in-browser</span>
+      <span class="privacy-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>No account লাগে না</span>
+    </div>
+
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload a video file">
+      <div class="up-icon-wrap">
+        <svg class="up-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+      </div>
+      <div class="dz-title">ভিডিও ফাইল বেছে নাও</div>
+      <div class="dz-sub">Tap করো, gallery থেকে <span class="accent">select করো</span></div>
+      <input type="file" id="fileInput" accept="video/*">
+    </div>
+
+    <div class="file-card" id="fileCard">
+      <div class="file-thumb" id="fileThumb">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+      </div>
+      <div class="file-meta">
+        <div class="file-name" id="fileName">—</div>
+        <div class="file-sub" id="fileSub">—</div>
+      </div>
+      <button type="button" class="file-remove" id="fileRemove" aria-label="Remove file">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="section-label">Output format</div>
+    <div class="format-grid" id="formatGrid">
+      <input type="radio" name="fmt" id="fmt-mp4" value="mp4" checked>
+      <label for="fmt-mp4" class="format-opt">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span class="fmt-name">MP4</span>
+        <span class="fmt-tag">video</span>
+      </label>
+
+      <input type="radio" name="fmt" id="fmt-webm" value="webm">
+      <label for="fmt-webm" class="format-opt">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 8v8l7-4-7-4Z"/></svg>
+        <span class="fmt-name">WebM</span>
+        <span class="fmt-tag">video</span>
+      </label>
+
+      <input type="radio" name="fmt" id="fmt-mp3" value="mp3">
+      <label for="fmt-mp3" class="format-opt">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <span class="fmt-name">MP3</span>
+        <span class="fmt-tag">audio</span>
+      </label>
+
+      <input type="radio" name="fmt" id="fmt-gif" value="gif">
+      <label for="fmt-gif" class="format-opt">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+        <span class="fmt-name">GIF</span>
+        <span class="fmt-tag">clip</span>
+      </label>
+    </div>
+
+    <div class="quality-row">
+      <span class="section-label" style="margin:0;">Quality</span>
+      <div class="seg" id="qualitySeg" data-active="sd">
+        <input type="radio" name="quality" id="q-sd" value="sd" checked>
+        <label for="q-sd">Compressed</label>
+        <input type="radio" name="quality" id="q-hd" value="hd">
+        <label for="q-hd">Original</label>
+        <div class="seg-thumb"></div>
+      </div>
+    </div>
+
+    <div class="progress-block" id="progressBlock">
+      <div class="progress-top">
+        <span id="progressLabel">প্রস্তুত হচ্ছে…</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-log" id="progressLog">&nbsp;</div>
+    </div>
+
+    <div class="banner error" id="errorBanner" role="alert">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span id="errorText">কিছু একটা সমস্যা হয়েছে।</span>
+    </div>
+
+    <div class="result" id="resultCard">
+      <video class="result-media" id="resultVideo" controls playsinline></video>
+      <div class="result-bottom">
+        <span class="file-info" id="resultInfo">— MB · —</span>
+        <div class="result-actions">
+          <button type="button" class="again-btn" id="againBtn">আরেকটা convert করো</button>
+          <a href="#" class="dl-btn" id="dlLink" download>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            Download
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <footer class="foot">
+    সব conversion তোমার ফোনেই হয়, WebAssembly (ffmpeg.wasm) দিয়ে — কোনো ফাইল কোনো server-এ যায় না।<br>
+    Convert চলাকালীন app বন্ধ করো না, tab টা খোলা রেখো।
+  </footer>
+</div>
+
+<div class="action-bar">
+  <div class="action-bar-inner">
+    <button type="button" class="go-btn" id="goBtn" disabled>
+      <span class="spinner"></span>
+      <span class="btn-txt">Convert করো</span>
+    </button>
+  </div>
+</div>
+
+<script type="module">
+  import { FFmpeg } from 'https://esm.sh/@ffmpeg/ffmpeg@0.12.10';
+  import { fetchFile, toBlobURL } from 'https://esm.sh/@ffmpeg/util@0.12.1';
+
+  /* ================= ACCESS GATE ================= */
+  // Passcode is: amraduijon
+  // To change it: run in any browser console —
+  //   crypto.subtle.digest('SHA-256', new TextEncoder().encode('yourNewPasscode'))
+  //     .then(b => console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')))
+  // then replace PASS_HASH below with the printed value.
+  const PASS_HASH = '7f06b8cab8e5c92ff327ce6ad929c0fe0426e32a7c6beba842a4e4abf58ae2a6';
+  const SESSION_KEY = 'convertly_unlocked';
+
+  async function sha256Hex(text){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  const gate = document.getElementById('gate');
+  const gateCard = document.getElementById('gateCard');
+  const gateForm = document.getElementById('gateForm');
+  const passInput = document.getElementById('passInput');
+  const gateError = document.getElementById('gateError');
+  const shell = document.getElementById('shell');
+
+  function unlock(){
+    gate.classList.add('hidden');
+    shell.classList.add('ready');
+    try{ sessionStorage.setItem(SESSION_KEY, '1'); }catch(e){}
+  }
+
+  if (sessionStorage.getItem(SESSION_KEY) === '1'){
+    unlock();
+  }
+
+  gateForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const val = passInput.value.trim();
+    if (!val) return;
+    const hash = await sha256Hex(val);
+    if (hash === PASS_HASH){
+      gateError.classList.remove('show');
+      unlock();
+    } else {
+      gateError.classList.add('show');
+      gateCard.classList.remove('shake');
+      void gateCard.offsetWidth;
+      gateCard.classList.add('shake');
+      passInput.value = '';
+      passInput.focus();
+    }
+  });
+
+  /* ================= APP STATE ================= */
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileCard = document.getElementById('fileCard');
+  const fileThumb = document.getElementById('fileThumb');
+  const fileName = document.getElementById('fileName');
+  const fileSub = document.getElementById('fileSub');
+  const fileRemove = document.getElementById('fileRemove');
+  const goBtn = document.getElementById('goBtn');
+  const progressBlock = document.getElementById('progressBlock');
+  const progressFill = document.getElementById('progressFill');
+  const progressPct = document.getElementById('progressPct');
+  const progressLabel = document.getElementById('progressLabel');
+  const progressLog = document.getElementById('progressLog');
+  const errorBanner = document.getElementById('errorBanner');
+  const errorText = document.getElementById('errorText');
+  const resultCard = document.getElementById('resultCard');
+  const resultVideo = document.getElementById('resultVideo');
+  const resultInfo = document.getElementById('resultInfo');
+  const dlLink = document.getElementById('dlLink');
+  const againBtn = document.getElementById('againBtn');
+  const qualitySeg = document.getElementById('qualitySeg');
+
+  let currentFile = null;
+  let ffmpeg = null;
+  let ffmpegLoaded = false;
+
+  function fmtBytes(bytes){
+    if (!bytes) return '0 MB';
+    const mb = bytes / (1024*1024);
+    return mb >= 1 ? mb.toFixed(1) + ' MB' : (bytes/1024).toFixed(0) + ' KB';
+  }
+
+  function setFile(file){
+    if (!file || !file.type.startsWith('video/')){
+      showError('একটা valid video file বেছে নাও।');
+      return;
+    }
+    currentFile = file;
+    fileName.textContent = file.name;
+    fileSub.textContent = fmtBytes(file.size) + ' · ' + (file.type || 'video');
+    fileCard.classList.add('show');
+    goBtn.disabled = false;
+    hideBanners();
+    resultCard.classList.remove('show');
+
+    const url = URL.createObjectURL(file);
+    fileThumb.innerHTML = '';
+    const vid = document.createElement('video');
+    vid.src = url; vid.muted = true; vid.playsInline = true;
+    fileThumb.appendChild(vid);
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+  fileInput.addEventListener('change', (e) => { if (e.target.files[0]) setFile(e.target.files[0]); });
+
+  ['dragenter','dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('drag'); });
+  });
+  dropzone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  fileRemove.addEventListener('click', (e) => {
+    e.stopPropagation();
+    currentFile = null;
+    fileInput.value = '';
+    fileCard.classList.remove('show');
+    goBtn.disabled = true;
+    resultCard.classList.remove('show');
+    hideBanners();
+  });
+
+  qualitySeg.addEventListener('change', (e) => {
+    if (e.target.name === 'quality') qualitySeg.setAttribute('data-active', e.target.value);
+  });
+
+  function hideBanners(){ errorBanner.classList.remove('show'); }
+  function showError(msg){
+    errorText.textContent = msg;
+    errorBanner.classList.add('show');
+    progressBlock.classList.remove('show');
+  }
+
+  function extOf(name){
+    const m = name.match(/\.([a-zA-Z0-9]+)$/);
+    return m ? m[1].toLowerCase() : 'mp4';
+  }
+
+  async function ensureFFmpeg(){
+    if (ffmpegLoaded) return;
+    progressLabel.textContent = 'Converter লোড হচ্ছে (প্রথমবার একটু সময় নেবে)…';
+    progressBlock.classList.add('show');
+    progressFill.style.width = '8%';
+
+    ffmpeg = new FFmpeg();
+    ffmpeg.on('log', ({ message }) => {
+      progressLog.textContent = message;
+    });
+    ffmpeg.on('progress', ({ progress }) => {
+      const pct = Math.min(99, Math.max(5, Math.round(progress * 100)));
+      progressFill.style.width = pct + '%';
+      progressPct.textContent = pct + '%';
+    });
+
+    const base = 'https://esm.sh/@ffmpeg/core@0.12.6/dist/esm';
+    const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript');
+    const wasmURL = await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm');
+    await ffmpeg.load({ coreURL, wasmURL });
+    ffmpegLoaded = true;
+  }
+
+  function buildArgs(inputName, format, quality){
+    const hd = quality === 'hd';
+    switch(format){
+      case 'mp4':
+        return hd
+          ? ['-i', inputName, '-c:v','libx264','-preset','fast','-crf','20','-c:a','aac','-b:a','160k', 'output.mp4']
+          : ['-i', inputName, '-vf','scale=-2:720', '-c:v','libx264','-preset','veryfast','-crf','28','-c:a','aac','-b:a','128k', 'output.mp4'];
+      case 'webm':
+        return hd
+          ? ['-i', inputName, '-c:v','libvpx-vp9','-crf','30','-b:v','0','-c:a','libopus','-b:a','160k', 'output.webm']
+          : ['-i', inputName, '-vf','scale=-2:720', '-c:v','libvpx-vp9','-crf','36','-b:v','0','-c:a','libopus','-b:a','96k', 'output.webm'];
+      case 'mp3':
+        return ['-i', inputName, '-vn', '-c:a','libmp3lame','-b:a', hd ? '256k' : '160k', 'output.mp3'];
+      case 'gif':
+        return ['-i', inputName, '-vf', hd ? 'fps=14,scale=640:-1:flags=lanczos' : 'fps=10,scale=420:-1:flags=lanczos', 'output.gif'];
+      default:
+        return ['-i', inputName, 'output.mp4'];
+    }
+  }
+
+  const mimeFor = { mp4:'video/mp4', webm:'video/webm', mp3:'audio/mpeg', gif:'image/gif' };
+
+  goBtn.addEventListener('click', async () => {
+    if (!currentFile) return;
+    hideBanners();
+    resultCard.classList.remove('show');
+    goBtn.disabled = true;
+    goBtn.classList.add('loading');
+
+    const format = document.querySelector('input[name="fmt"]:checked').value;
+    const quality = document.querySelector('input[name="quality"]:checked').value;
+
+    try{
+      await ensureFFmpeg();
+
+      progressBlock.classList.add('show');
+      progressLabel.textContent = 'Convert হচ্ছে…';
+      progressFill.style.width = '5%';
+      progressPct.textContent = '5%';
+
+      const inExt = extOf(currentFile.name);
+      const inputName = `input.${inExt}`;
+      const outputName = `output.${format}`;
+
+      await ffmpeg.writeFile(inputName, await fetchFile(currentFile));
+      const args = buildArgs(inputName, format, quality);
+      await ffmpeg.exec(args);
+
+      const data = await ffmpeg.readFile(outputName);
+      const blob = new Blob([data.buffer], { type: mimeFor[format] || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+
+      progressFill.style.width = '100%';
+      progressPct.textContent = '100%';
+      progressLabel.textContent = 'সম্পন্ন!';
+
+      if (format === 'mp3'){
+        resultVideo.outerHTML = `<audio class="result-media" id="resultVideo" controls style="width:100%;padding:26px;background:#000;"></audio>`;
+      }
+      const mediaEl = document.getElementById('resultVideo');
+      mediaEl.src = url;
+
+      resultInfo.textContent = `${fmtBytes(blob.size)} · .${format}`;
+      dlLink.href = url;
+      dlLink.download = currentFile.name.replace(/\.[^.]+$/, '') + '_converted.' + format;
+
+      resultCard.classList.add('show');
+      resultCard.scrollIntoView({ behavior:'smooth', block:'center' });
+      setTimeout(() => progressBlock.classList.remove('show'), 700);
+
+      try{ await ffmpeg.deleteFile(inputName); await ffmpeg.deleteFile(outputName); }catch(e){}
+
+    } catch(err){
+      console.error(err);
+      showError('Convert করতে সমস্যা হয়েছে। বড় ফাইল হলে ছোট করে দেখো, অথবা অন্য format try করো।');
+    } finally {
+      goBtn.classList.remove('loading');
+      goBtn.disabled = false;
+    }
+  });
+
+  againBtn.addEventListener('click', () => {
+    resultCard.classList.remove('show');
+    fileRemove.click();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+
+</body>
+</html>
