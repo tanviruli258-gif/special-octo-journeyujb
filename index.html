@@ -237,7 +237,7 @@
   }
 
   /* format grid */
-  .format-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:9px; }
+  .format-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:9px; }
   .format-grid input{ position:absolute; opacity:0; pointer-events:none; }
   .format-opt{
     display:flex; flex-direction:column; align-items:center; gap:7px;
@@ -293,6 +293,8 @@
   .banner svg{ flex-shrink:0; margin-top:1px; }
   .banner.error{ background:var(--danger-bg); color:#ffb9b9; border:1px solid rgba(255,123,123,.22); }
   .banner.success{ background:var(--success-bg); color:#b0f2cd; border:1px solid rgba(124,232,172,.22); }
+  .banner.warn{ background:#26200f; color:#f2d99e; border:1px solid rgba(240,196,111,.25); margin-top:16px; }
+  .banner.warn svg{ stroke:#f0c46f; }
 
   /* result */
   .result{
@@ -435,6 +437,11 @@
       </button>
     </div>
 
+    <div class="banner warn" id="sizeWarning">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <span id="sizeWarningText">ফাইলটা বেশ বড় — কম RAM-এর ফোনে convert fail করতে পারে। <b>MP4 + Compressed</b> দিয়ে try করো, সবচেয়ে নিরাপদ।</span>
+    </div>
+
     <div class="section-label">Output format</div>
     <div class="format-grid" id="formatGrid">
       <input type="radio" name="fmt" id="fmt-mp4" value="mp4" checked>
@@ -463,6 +470,13 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
         <span class="fmt-name">GIF</span>
         <span class="fmt-tag">clip</span>
+      </label>
+
+      <input type="radio" name="fmt" id="fmt-3gp" value="3gp">
+      <label for="fmt-3gp" class="format-opt">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4V8Z"/></svg>
+        <span class="fmt-name">3GP</span>
+        <span class="fmt-tag">classic</span>
       </label>
     </div>
 
@@ -597,10 +611,14 @@
   const dlLink = document.getElementById('dlLink');
   const againBtn = document.getElementById('againBtn');
   const qualitySeg = document.getElementById('qualitySeg');
+  const sizeWarning = document.getElementById('sizeWarning');
+  const sizeWarningText = document.getElementById('sizeWarningText');
 
   let currentFile = null;
   let ffmpeg = null;
   let ffmpegLoaded = false;
+  let lastLogLines = [];
+  const BIG_FILE_MB = 80;
 
   function fmtBytes(bytes){
     if (!bytes) return '0 MB';
@@ -620,6 +638,14 @@
     goBtn.disabled = false;
     hideBanners();
     resultCard.classList.remove('show');
+
+    const mb = file.size / (1024*1024);
+    if (mb > BIG_FILE_MB){
+      sizeWarningText.innerHTML = `ফাইলটা ${mb.toFixed(0)} MB — বেশ বড়। কম RAM-এর ফোনে convert মাঝপথে fail করতে পারে। <b>MP4 + Compressed</b> দিয়ে try করো, আর ফোন চার্জে রেখো convert চলাকালীন।`;
+      sizeWarning.classList.add('show');
+    } else {
+      sizeWarning.classList.remove('show');
+    }
 
     const url = URL.createObjectURL(file);
     fileThumb.innerHTML = '';
@@ -651,6 +677,7 @@
     goBtn.disabled = true;
     resultCard.classList.remove('show');
     hideBanners();
+    sizeWarning.classList.remove('show');
   });
 
   qualitySeg.addEventListener('change', (e) => {
@@ -659,7 +686,7 @@
 
   function hideBanners(){ errorBanner.classList.remove('show'); }
   function showError(msg){
-    errorText.textContent = msg;
+    errorText.innerHTML = msg;
     errorBanner.classList.add('show');
     progressBlock.classList.remove('show');
   }
@@ -678,6 +705,8 @@
     ffmpeg = new FFmpeg();
     ffmpeg.on('log', ({ message }) => {
       progressLog.textContent = message;
+      lastLogLines.push(message);
+      if (lastLogLines.length > 12) lastLogLines.shift();
     });
     ffmpeg.on('progress', ({ progress }) => {
       const pct = Math.min(99, Math.max(5, Math.round(progress * 100)));
@@ -707,12 +736,16 @@
         return ['-i', inputName, '-vn', '-c:a','libmp3lame','-b:a', hd ? '256k' : '160k', 'output.mp3'];
       case 'gif':
         return ['-i', inputName, '-vf', hd ? 'fps=14,scale=640:-1:flags=lanczos' : 'fps=10,scale=420:-1:flags=lanczos', 'output.gif'];
+      case '3gp':
+        return hd
+          ? ['-i', inputName, '-r','20','-s','352x288','-vcodec','h263','-b:v','384k','-acodec','aac','-b:a','96k', 'output.3gp']
+          : ['-i', inputName, '-r','20','-s','176x144','-vcodec','h263','-b:v','128k','-acodec','aac','-b:a','64k', 'output.3gp'];
       default:
         return ['-i', inputName, 'output.mp4'];
     }
   }
 
-  const mimeFor = { mp4:'video/mp4', webm:'video/webm', mp3:'audio/mpeg', gif:'image/gif' };
+  const mimeFor = { mp4:'video/mp4', webm:'video/webm', mp3:'audio/mpeg', gif:'image/gif', '3gp':'video/3gpp' };
 
   goBtn.addEventListener('click', async () => {
     if (!currentFile) return;
@@ -723,6 +756,7 @@
 
     const format = document.querySelector('input[name="fmt"]:checked').value;
     const quality = document.querySelector('input[name="quality"]:checked').value;
+    lastLogLines = [];
 
     try{
       await ensureFFmpeg();
@@ -766,7 +800,20 @@
 
     } catch(err){
       console.error(err);
-      showError('Convert করতে সমস্যা হয়েছে। বড় ফাইল হলে ছোট করে দেখো, অথবা অন্য format try করো।');
+      const logTail = lastLogLines.slice(-3).join(' · ');
+      const looksLikeMemory = /memory|out of memory|oom|abort/i.test(logTail) || /memory/i.test(String(err && err.message));
+      let msg;
+      if (looksLikeMemory){
+        msg = `ফোনের memory কম পড়ে convert fail করেছে। এই ফাইলটা (${currentFile ? fmtBytes(currentFile.size) : ''}) এই ফোনের জন্য বড়। <b>MP4 + Compressed</b> select করে আবার try করো, অন্য app বন্ধ করে দাও, আর ফোন চার্জে রেখো।`;
+      } else if (format === 'webm' || format === 'gif'){
+        msg = `${format.toUpperCase()} এ convert fail করেছে — এটা ফোনে বেশি resource নেয়। এর বদলে <b>MP4</b> + Compressed try করো, সেটা অনেক বেশি stable।`;
+      } else if (format === '3gp'){
+        msg = `3GP এ convert fail করেছে — এই browser-এর ffmpeg build-এ 3GP-র video encoder (H.263) সাপোর্ট নাও থাকতে পারে। এর বদলে <b>MP4</b> try করো — ফাইল ছোট রাখতে চাইলে Compressed quality নাও।`;
+      } else {
+        msg = 'Convert করতে সমস্যা হয়েছে। বড় ফাইল হলে ছোট করে দেখো, Compressed quality-তে try করো, অথবা অন্য format try করো।';
+      }
+      if (logTail) msg += `<br><span class="mono" style="opacity:.6;font-size:11px;">${logTail}</span>`;
+      showError(msg);
     } finally {
       goBtn.classList.remove('loading');
       goBtn.disabled = false;
